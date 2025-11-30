@@ -94,6 +94,8 @@ async function getApiApp(): Promise<Express> {
   app.post('/api/progress/task/:taskId', progressHandler.updateSingleTask);
   app.post('/api/progress/tasks', progressHandler.updateMultipleTasks);
   app.post('/api/progress/task/objective/:objectiveId', progressHandler.updateTaskObjective);
+  app.post('/api/progress/hideout/module/:moduleId', progressHandler.updateHideoutModule);
+  app.post('/api/progress/hideout/part/:partId', progressHandler.updateHideoutPart);
   app.options('/api/team/create', (_req: ExpressRequest, res: ExpressResponse) => {
     res.status(200).send();
   });
@@ -113,6 +115,8 @@ async function getApiApp(): Promise<Express> {
   app.post('/api/v2/progress/task/:taskId', progressHandler.updateSingleTask);
   app.post('/api/v2/progress/tasks', progressHandler.updateMultipleTasks);
   app.post('/api/v2/progress/task/objective/:objectiveId', progressHandler.updateTaskObjective);
+  app.post('/api/v2/progress/hideout/module/:moduleId', progressHandler.updateHideoutModule);
+  app.post('/api/v2/progress/hideout/part/:partId', progressHandler.updateHideoutPart);
   app.get(
     '/health',
     asyncHandler(async (_req: ExpressRequest, res: ExpressResponse) => {

@@ -3,6 +3,9 @@ import {
   TaskUpdateRequest, 
   MultipleTaskUpdateRequest, 
   ObjectiveUpdateRequest,
+  HideoutModuleStatus,
+  HideoutModuleUpdateRequest,
+  HideoutPartUpdateRequest,
   ApiToken 
 } from '../types/api.js';
 import { errors } from '../middleware/errorHandler.js';
@@ -117,6 +120,70 @@ export class ValidationService {
   }
 
   /**
+   * Validates hideout module status values
+   */
+  static validateHideoutModuleStatus(status: unknown): status is HideoutModuleStatus {
+    return typeof status === 'string' && 
+           (status === 'completed' || status === 'uncompleted');
+  }
+
+  /**
+   * Validates and sanitizes hideout module update request
+   */
+  static validateHideoutModuleUpdate(body: unknown): HideoutModuleUpdateRequest {
+    if (!body || typeof body !== 'object') {
+      throw errors.badRequest('Request body is required');
+    }
+
+    const { state } = body as { state?: unknown };
+
+    if (!state) {
+      throw errors.badRequest('State is required');
+    }
+
+    if (!this.validateHideoutModuleStatus(state)) {
+      throw errors.badRequest(
+        "Invalid state provided. Must be 'completed' or 'uncompleted'"
+      );
+    }
+
+    return { state };
+  }
+
+  /**
+   * Validates hideout part update request
+   */
+  static validateHideoutPartUpdate(body: unknown): HideoutPartUpdateRequest {
+    if (!body || typeof body !== 'object') {
+      throw errors.badRequest('Request body is required');
+    }
+
+    const { state, count } = body as { state?: unknown; count?: unknown };
+
+    if (!state && count == null) {
+      throw errors.badRequest('Either state or count must be provided');
+    }
+
+    const update: HideoutPartUpdateRequest = {};
+
+    if (state) {
+      if (state !== 'completed' && state !== 'uncompleted') {
+        throw errors.badRequest('State must be "completed" or "uncompleted"');
+      }
+      update.state = state;
+    }
+
+    if (count != null) {
+      if (typeof count !== 'number' || count < 0 || !Number.isInteger(count)) {
+        throw errors.badRequest('Count must be a non-negative integer');
+      }
+      update.count = count;
+    }
+
+    return update;
+  }
+
+  /**
    * Validates task ID parameter
    */
   static validateTaskId(taskId: string): string {
@@ -124,6 +191,26 @@ export class ValidationService {
       throw errors.badRequest('Task ID is required and must be a non-empty string');
     }
     return taskId.trim();
+  }
+
+  /**
+   * Validates hideout module ID parameter
+   */
+  static validateModuleId(moduleId: string): string {
+    if (!moduleId || typeof moduleId !== 'string' || moduleId.trim().length === 0) {
+      throw errors.badRequest('Module ID is required and must be a non-empty string');
+    }
+    return moduleId.trim();
+  }
+
+  /**
+   * Validates hideout part ID parameter
+   */
+  static validatePartId(partId: string): string {
+    if (!partId || typeof partId !== 'string' || partId.trim().length === 0) {
+      throw errors.badRequest('Part ID is required and must be a non-empty string');
+    }
+    return partId.trim();
   }
 
   /**

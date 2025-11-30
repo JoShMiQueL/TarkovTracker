@@ -11,6 +11,9 @@ import {
   TaskStatus, 
   MultipleTaskUpdateRequest, 
   ObjectiveUpdateRequest,
+  HideoutModuleStatus,
+  HideoutModuleUpdateRequest,
+  HideoutPartUpdateRequest,
   ServiceOptions,
   TaskCompletion
 } from '../types/api.js';
@@ -244,6 +247,96 @@ export class ProgressService {
         update,
       });
       throw errors.internal('Failed to update task objective');
+    }
+  }
+
+  /**
+   * Updates hideout module completion state
+   */
+  async updateHideoutModule(
+    userId: string,
+    moduleId: string,
+    state: HideoutModuleStatus,
+    gameMode: string = 'pvp'
+  ): Promise<void> {
+    const progressRef = this.db.collection('progress').doc(userId) as DocumentReference<ProgressDocument>;
+
+    try {
+      const updateTime = Date.now();
+      const updateData: Record<string, boolean | number | FieldValue> = {};
+      const baseKey = `${gameMode}.hideoutModules.${moduleId}`;
+
+      if (state === 'completed') {
+        updateData[`${baseKey}.complete`] = true;
+        updateData[`${baseKey}.timestamp`] = updateTime;
+      } else if (state === 'uncompleted') {
+        updateData[`${baseKey}.complete`] = false;
+        updateData[`${baseKey}.timestamp`] = FieldValue.delete();
+      }
+
+      await progressRef.update(updateData);
+
+      logger.log('Hideout module updated successfully', {
+        userId,
+        moduleId,
+        state,
+      });
+    } catch (error) {
+      logger.error('Error updating hideout module:', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        moduleId,
+        state,
+      });
+      throw errors.internal('Failed to update hideout module');
+    }
+  }
+
+  /**
+   * Updates hideout part progress (items for a module)
+   */
+  async updateHideoutPart(
+    userId: string,
+    partId: string,
+    update: HideoutPartUpdateRequest,
+    gameMode: string = 'pvp'
+  ): Promise<void> {
+    const progressRef = this.db.collection('progress').doc(userId) as DocumentReference<ProgressDocument>;
+
+    try {
+      const updateTime = Date.now();
+      const updateData: Record<string, boolean | number | FieldValue> = {};
+      const baseKey = `${gameMode}.hideoutParts.${partId}`;
+
+      if (update.state) {
+        if (update.state === 'completed') {
+          updateData[`${baseKey}.complete`] = true;
+          updateData[`${baseKey}.timestamp`] = updateTime;
+        } else if (update.state === 'uncompleted') {
+          updateData[`${baseKey}.complete`] = false;
+          updateData[`${baseKey}.timestamp`] = FieldValue.delete();
+        }
+      }
+
+      if (update.count != null) {
+        updateData[`${baseKey}.count`] = update.count;
+      }
+
+      await progressRef.update(updateData);
+
+      logger.log('Hideout part updated successfully', {
+        userId,
+        partId,
+        update,
+      });
+    } catch (error) {
+      logger.error('Error updating hideout part:', {
+        error: error instanceof Error ? error.message : String(error),
+        userId,
+        partId,
+        update,
+      });
+      throw errors.internal('Failed to update hideout part');
     }
   }
 

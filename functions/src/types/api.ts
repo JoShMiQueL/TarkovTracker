@@ -144,6 +144,18 @@ export interface ObjectiveUpdateRequest {
   count?: number;
 }
 
+// Hideout validation types
+export type HideoutModuleStatus = 'completed' | 'uncompleted';
+
+export interface HideoutModuleUpdateRequest {
+  state: HideoutModuleStatus;
+}
+
+export interface HideoutPartUpdateRequest {
+  state?: 'completed' | 'uncompleted';
+  count?: number;
+}
+
 // Service method options
 export interface ServiceOptions {
   transaction?: FirebaseFirestore.Transaction;

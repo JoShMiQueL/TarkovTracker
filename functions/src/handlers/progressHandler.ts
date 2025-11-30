@@ -75,6 +75,198 @@ export const getPlayerProgress = asyncHandler(async (req: AuthenticatedRequest, 
 
 /**
  * @openapi
+ * /progress/hideout/module/{moduleId}:
+ *   post:
+ *     summary: "Update the completion state of a single hideout module."
+ *     tags:
+ *       - "Progress"
+ *     description: "Mark a hideout module as completed or uncompleted."
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: moduleId
+ *         required: true
+ *         description: "The ID (usually UUID from tarkov.dev) of the hideout module to update."
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: gameMode
+ *         required: false
+ *         description: "Game mode to update module for (pvp or pve). Only used for dual-mode tokens; single-mode tokens use their configured game mode."
+ *         schema:
+ *           type: string
+ *           enum: [pvp, pve]
+ *           default: pvp
+ *     requestBody:
+ *       required: true
+ *       description: "The new state for the hideout module."
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - state
+ *             properties:
+ *               state:
+ *                 type: string
+ *                 description: "The new state of the hideout module."
+ *                 enum: [uncompleted, completed]
+ *     responses:
+ *       200:
+ *         description: "The hideout module was updated successfully."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     moduleId:
+ *                       type: string
+ *                     state:
+ *                       type: string
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: "Invalid request parameters (e.g., bad moduleId or state)."
+ *       401:
+ *         description: "Unauthorized to update progress (missing 'WP' permission)."
+ *       500:
+ *         description: "Internal server error."
+ */
+export const updateHideoutModule = asyncHandler(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  ValidationService.validatePermissions(req.apiToken, 'WP');
+
+  const userId = ValidationService.validateUserId(req.apiToken?.owner);
+  const moduleId = ValidationService.validateModuleId(req.params.moduleId);
+  const { state } = ValidationService.validateHideoutModuleUpdate(req.body);
+
+  // Use token's game mode if specified, otherwise allow query parameter override (for dual tokens)
+  let gameMode = req.apiToken?.gameMode || 'pvp';
+  if (gameMode === 'dual') {
+    gameMode = req.query.gameMode as string || 'pvp';
+  }
+
+  await progressService.updateHideoutModule(userId, moduleId, state, gameMode);
+
+  const response: ApiResponse = {
+    success: true,
+    data: {
+      moduleId,
+      state,
+      message: 'Hideout module updated successfully',
+    },
+  };
+
+  res.status(200).json(response);
+});
+
+/**
+ * @openapi
+ * /progress/hideout/part/{partId}:
+ *   post:
+ *     summary: "Update progress for a hideout part (items for a module)."
+ *     tags:
+ *       - "Progress"
+ *     description: "Update the progress (state or count) for a specific hideout part."
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: partId
+ *         required: true
+ *         description: "The ID (usually UUID from tarkov.dev) of the hideout part to update."
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: gameMode
+ *         required: false
+ *         description: "Game mode to update part for (pvp or pve). Only used for dual-mode tokens; single-mode tokens use their configured game mode."
+ *         schema:
+ *           type: string
+ *           enum: [pvp, pve]
+ *           default: pvp
+ *     requestBody:
+ *       required: true
+ *       description: "The hideout part properties to update. Provide at least one."
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               state:
+ *                 type: string
+ *                 description: "The new state of the hideout part."
+ *                 enum: [completed, uncompleted]
+ *                 nullable: true
+ *               count:
+ *                 type: integer
+ *                 description: "The number of items collected for this hideout part."
+ *                 minimum: 0
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: "The hideout part was updated successfully."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     partId:
+ *                       type: string
+ *                     state:
+ *                       type: string
+ *                       nullable: true
+ *                     count:
+ *                       type: integer
+ *                       nullable: true
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: "Invalid request parameters (e.g., bad partId, state, or count)."
+ *       401:
+ *         description: "Unauthorized to update progress (missing 'WP' permission)."
+ *       500:
+ *         description: "Internal server error."
+ */
+export const updateHideoutPart = asyncHandler(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  ValidationService.validatePermissions(req.apiToken, 'WP');
+
+  const userId = ValidationService.validateUserId(req.apiToken?.owner);
+  const partId = ValidationService.validatePartId(req.params.partId);
+  const updateData = ValidationService.validateHideoutPartUpdate(req.body);
+
+  // Use token's game mode if specified, otherwise allow query parameter override (for dual tokens)
+  let gameMode = req.apiToken?.gameMode || 'pvp';
+  if (gameMode === 'dual') {
+    gameMode = req.query.gameMode as string || 'pvp';
+  }
+
+  await progressService.updateHideoutPart(userId, partId, updateData, gameMode);
+
+  const response: ApiResponse = {
+    success: true,
+    data: {
+      partId,
+      ...updateData,
+      message: 'Hideout part updated successfully',
+    },
+  };
+
+  res.status(200).json(response);
+});
+
+/**
+ * @openapi
  * /progress/level/{levelValue}:
  *   post:
  *     summary: "Sets player's level to value specified in the path"
@@ -427,4 +619,6 @@ export default {
   updateSingleTask,
   updateMultipleTasks,
   updateTaskObjective,
+  updateHideoutModule,
+  updateHideoutPart,
 };
